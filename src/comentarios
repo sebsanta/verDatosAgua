@@ -1,0 +1,306 @@
+import { inheritsComments } from '@babel/types';
+import React from 'react';
+import {firebase} from './firebase'
+
+function App() {
+
+  const [tar, setTar] = React.useState([])
+  const [tareas, setTareas] = React.useState([])
+  const [tarea, setTarea] = React.useState('')
+  const [edad, setEdad] = React.useState('')
+  const [modoEdicion, setModoEdicion] = React.useState(false)
+  const [id, setId] = React.useState('')
+
+
+  React.useEffect(() => {
+    const obtenerDatos = async () => {
+      try{
+        const db = firebase.firestore()
+        const data = await db.collection('Tareas').get()
+        const arrayData =  data.docs.map(doc => ({
+          id: doc.id, 
+          ...doc.data()
+        }))
+        //console.log(arrayData);
+        setTareas(arrayData);
+      }
+      catch(error){
+        console.log(error)
+      }
+    };
+
+    const obtenerDatosAgua = async () => {
+      try {
+        const db = firebase.firestore()
+        const dat = await db.collection('Locaciones').get()
+        const arrayDat = dat.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setTar(arrayDat)
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    obtenerDatos()
+    obtenerDatosAgua()
+
+  }, [])
+
+  const agregar = async (e) => {
+    e.preventDefault()
+    if(!tarea.trim() || !edad.trim()){
+      console.log("esta vacio")
+      return
+    }
+    try {
+      const db = firebase.firestore()
+      const nuevaTarea = {
+        Nombre: tarea,
+        Edad: edad,
+        Fecha: Date.now()
+      }
+      const data = await db.collection('Tareas').add(nuevaTarea)
+      setTarea('')
+      setEdad('')
+      setTareas([
+        ...tareas, 
+        {...nuevaTarea, id: data.id}
+      ])
+    } catch (error) {
+      console.log(error)
+    }
+    console.log(tarea)
+  }
+
+  const eliminar = async (id) => {
+    try {
+      const db = firebase.firestore()
+      await db.collection('Tareas').doc(id).delete()
+
+      const arrayFiltrado = tareas.filter(item => item.id !== id)
+      setTareas(arrayFiltrado)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const activarEdicion = (item) => {
+    console.log("ok")
+    setModoEdicion(true)
+    setTarea(item.Nombre)
+    setEdad(item.Edad)
+    setId(item.id)
+  }
+
+  const editar = async (e) => {
+    e.preventDefault()
+    if(!tarea.trim() || !edad.trim()){
+      console.log("vacio")
+      return
+    }
+    try {
+      const db = firebase.firestore()
+      await db.collection("Tareas").doc(id).update({
+        Nombre: tarea,
+        Edad: edad
+      })
+      const arrayEditado = tareas.map(item => (
+        item.id === id ? {id: item.id, Fecha: item.Fecha, Nombre: tarea, Edad: edad} : item
+      ))
+      setTareas(arrayEditado)
+      setModoEdicion(false)
+      setTarea('')
+      setEdad('')
+      setId('')
+
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  return (
+
+    <div className="container-fluid mt-6">
+        <div className="row">
+          <div className="col-md-12">
+            <table className="table table-responsive">
+                <thead>
+                  <th>Locaciones</th>
+                  <th>Lugar</th>
+                  <th>Descripción</th>
+                  <th>PPM</th>
+                </thead>
+                <tbody>
+                  <tr>
+                    {tar.map(item =>(
+                        <td>
+                            {item.adress}           
+                        </td>
+                    ))
+                    }
+                    {tar.map(item =>(
+                        <td>
+                            {item.description}           
+                        </td>
+                    ))
+                    }
+                  </tr>
+                </tbody>
+                {
+                tar.map(item => (
+                  <tr className="active" key={item.id}>Locación
+                      {item.adress}
+                  </tr>
+                ))} 
+             {
+                tar.map(item => (
+                  <tr className="active" key={item.id}>
+                     Dirección: {item.adress} | Descripción: {item.description} | Lugar: {item.name} | PPM: {item.ppm}
+
+                  
+                    <button className="btn btn-danger btn-sm float-right"
+                            onClick={() => eliminar(item.id)}
+                    >Del</button>
+                    <button 
+                            className="btn btn-warning btn-sm float-right mr-2"
+                            onClick={() => activarEdicion(item)}
+                    >Edit</button>
+                    <img src={item.images} width="200px" height="150" />
+                  </tr>
+                  
+                ))
+              }
+              
+            </table>
+
+          </div>
+          <div className="col-md-4">
+            <h3>
+              {
+                modoEdicion ? "Editar Tarea" : "Agregar Tarea"
+              }
+              </h3>
+           <form onSubmit=
+              {
+                modoEdicion ? editar : agregar
+              }>
+                <input 
+                  type="text"
+                  placeholder="Ingresa Tarea"
+                  className="form-control mb-2"
+                  onChange={e => setTarea(e.target.value)}
+                  value={tarea}
+                />
+                <input 
+                  type="text"
+                  placeholder="Ingrese Edad"
+                  className="form-control mb-2"
+                  onChange={e => setEdad(e.target.value)}
+                  value={edad}
+                />
+                <button 
+                  className=
+                  {
+                    modoEdicion ? "btn btn-warning btn-block" : "btn btn-dark btn-block"
+                  }
+                  type='submit'
+                >
+                  {
+                    modoEdicion ? "Editar" : "Agregar"
+                  }
+                  </button>
+              </form>
+          </div>
+        </div>
+    </div>
+  
+  );
+}
+
+export default App;
+
+
+
+///////////////////////////
+
+ <div className="container-fluid">
+      <hr/>
+      <h3 className="font-weight-light">Registro de medidor de calidad del agua</h3>
+      <hr/>
+        <div className="row">
+          <div className="col-md-12">
+          <div className="table table-responsive">
+            <table className="table table-condensed table-striped" >
+                <thead>
+                  <tr className="">
+                    <th className="text-center ">Región</th>
+                    <th className="text-center ">Comuna</th>
+                    <th className="text-center ">Dirección</th>
+                    <th className="text-center ">Descripción de la muestra</th>
+                    <th className="text-center ">PPM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="">
+                        {tar.map(item =>(
+                          <ul className="list-group list-group-flush" key={item.id}>
+                            <li className="list-group-item" >
+                                {item.region}           
+                            </li>
+                          </ul>
+                        ))}
+                      </td>
+                      <td className="">
+                        {tar.map(item =>(
+                          <ul className="list-group list-group-flush" key={item.id}>
+                            <li className="list-group-item">
+                                {item.name}           
+                            </li>
+                          </ul>
+                        ))}
+                      </td>
+                
+                    <td className="">
+                      {tar.map(item =>(
+                        <ul className="list-group list-group-flush" key={item.id}>
+                          <li className="list-group-item">
+                              {item.adress}       
+                          </li>
+                        </ul>
+                      ))}
+                    </td>
+                    <td className="">
+                      {tar.map(item =>(
+                        <ul className="list-group list-group-flush" key={item.id}>
+                           <li className="list-group-item">
+                                {item.description}          
+                            </li>
+                        </ul>
+                        ))}
+                    </td>
+                    <td className="">
+                      {tar.map(item =>(
+                        <ul className="list-group list-group-flush" key={item.id}>
+                          <li className="list-group-item">
+                              {item.ppm}           
+                          </li>
+                        </ul>
+                      ))}
+                    </td>
+                  </tr>
+                  <tr>    
+                  </tr>
+                </tbody> 
+            </table>
+          </div>
+        </div>
+        </div>
+    </div>
+  
+  );
+}
+
+export default App;
